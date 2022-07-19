@@ -14,7 +14,7 @@ import (
 	"github.com/andygrunwald/go-jira"
 )
 
-const dateFormat = "2006-01-02"
+const DateFormat = "2006-01-02"
 
 var CustomFieldStartDate = ""
 
@@ -29,7 +29,7 @@ func NewEpicCacher(rv *roadmap.RoadmapViewer, dir string) *EpicCacher {
 		rv,
 		dir,
 		func(project string, snapshotDate time.Time) string {
-			return path.Join(dir, removeSpace(project), snapshotDate.Format(dateFormat), "raw_data")
+			return path.Join(dir, removeSpace(project), snapshotDate.Format(DateFormat), "raw_data")
 		},
 	}
 }

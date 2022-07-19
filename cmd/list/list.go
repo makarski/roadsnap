@@ -89,7 +89,7 @@ func (l *Lister) List(date time.Time, project string) error {
 	summary := l.generateSummary(epics, project)
 	reportTxt := summary.String()
 
-	fileKey := path.Join(l.targetDir, project, date.Format(dateFormat), project+"_roadsnap.md")
+	fileKey := path.Join(l.targetDir, project, date.Format(cache.DateFormat), project+"_roadsnap.md")
 
 	f, err := os.Create(fileKey)
 	defer f.Close()
