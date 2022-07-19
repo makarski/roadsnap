@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/makarski/roadsnap/calculator"
 	"github.com/makarski/roadsnap/cmd/cache"
 	"github.com/makarski/roadsnap/cmd/list"
 	"github.com/makarski/roadsnap/config"
@@ -79,14 +80,15 @@ func cacheCmd(cfg *config.Config) CmdFunc {
 func listCmd(cfg *config.Config) CmdFunc {
 	cache.CustomFieldStartDate = cfg.Epic.CustomFieldStartDate
 
+	cacheReader := cache.NewEpicCacher(nil, InArgs.Dir)
+	summaryGenerator := calculator.NewCalculator(cfg.JiraCrd.BaseURL)
+	lister := list.NewLister(cacheReader, &summaryGenerator, InArgs.Dir)
+
 	return func() error {
 		projects, err := cache.ListProjects(InArgs.Dir)
 		if err != nil {
 			return err
 		}
-
-		cacheReader := cache.NewEpicCacher(nil, InArgs.Dir)
-		lister := list.NewLister(cacheReader, cfg.JiraCrd.BaseURL, InArgs.Dir)
 
 		if InArgs.Interactive {
 			return interactListCmdHandler(lister, projects)
