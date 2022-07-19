@@ -1,0 +1,16 @@
+[projects]
+names = [
+	"Project 1",
+	"Project 2",
+	"Project 3",
+]
+
+[jira]
+user = "email@example.com"
+account_id = "your_account_id"
+base_url = "https://{yourdomain}.atlassian.net/"
+token = "your_token"
+
+[epic]
+# todo: change to a more generic use case
+start_date_field = "customfield_11501"
