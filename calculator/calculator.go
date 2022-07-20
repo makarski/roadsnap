@@ -29,12 +29,12 @@ func NewCalculator(jiraBaseURL string) Calculator {
 
 func (c *Calculator) GenerateSummary(epics []*cache.EpicLink, project string) Summary {
 	sum := Summary{
-		project:        project,
+		Project:        project,
 		epicLinkPrefix: c.jiraBaseURL + "/browse",
-		done:           make([]cache.EpicLink, 0),
-		overdue:        make([]cache.EpicLink, 0),
-		ongoing:        make([]cache.EpicLink, 0),
-		outstanding:    make([]cache.EpicLink, 0),
+		Done:           make([]cache.EpicLink, 0),
+		Overdue:        make([]cache.EpicLink, 0),
+		Ongoing:        make([]cache.EpicLink, 0),
+		Outstanding:    make([]cache.EpicLink, 0),
 	}
 
 	for _, epic := range epics {
@@ -44,19 +44,19 @@ func (c *Calculator) GenerateSummary(epics []*cache.EpicLink, project string) Su
 		dueDatePassed := epic.PastDueDate()
 
 		if allDone && dueDatePassed {
-			sum.done = append(sum.done, epic)
+			sum.Done = append(sum.Done, epic)
 		}
 
 		if !allDone && dueDatePassed {
-			sum.overdue = append(sum.overdue, epic)
+			sum.Overdue = append(sum.Overdue, epic)
 		}
 
 		if epic.PreStartDate() {
-			sum.outstanding = append(sum.outstanding, epic)
+			sum.Outstanding = append(sum.Outstanding, epic)
 		}
 
 		if epic.InProgress() {
-			sum.ongoing = append(sum.ongoing, epic)
+			sum.Ongoing = append(sum.Ongoing, epic)
 		}
 	}
 
@@ -79,52 +79,59 @@ func epicStatusCount(epic cache.EpicLink) (uint8, uint8, uint8) {
 	return doneCount, inProgrCount, outstdCount
 }
 
-type Summary struct {
-	project        string
-	epicLinkPrefix string
-	done           []cache.EpicLink
-	overdue        []cache.EpicLink
-	ongoing        []cache.EpicLink
-	outstanding    []cache.EpicLink
+type (
+	Summary struct {
+		Project        string
+		epicLinkPrefix string
+		Done           []cache.EpicLink
+		Overdue        []cache.EpicLink
+		Ongoing        []cache.EpicLink
+		Outstanding    []cache.EpicLink
+	}
+
+	NamedItems struct {
+		Name  string
+		Epics []cache.EpicLink
+	}
+)
+
+func (s *Summary) NamedStats() []NamedItems {
+	return []NamedItems{
+		{
+			Name:  "Done",
+			Epics: s.Done,
+		},
+		{
+			Name:  "Ongoing",
+			Epics: s.Ongoing,
+		},
+		{
+			Name:  "Overdue",
+			Epics: s.Overdue,
+		},
+		{
+			Name:  "Outstanding",
+			Epics: s.Outstanding,
+		},
+	}
 }
 
 func (s *Summary) String() string {
-	named := []struct {
-		name  string
-		epics []cache.EpicLink
-	}{
-		{
-			name:  "Done",
-			epics: s.done,
-		},
-		{
-			name:  "Ongoing",
-			epics: s.ongoing,
-		},
-		{
-			name:  "Overdue",
-			epics: s.overdue,
-		},
-		{
-			name:  "Outstanding",
-			epics: s.outstanding,
-		},
-	}
-
+	named := s.NamedStats()
 	var buf bytes.Buffer
 
 	fmt.Fprintf(&buf, `
 %s: %s
 ======================
-`, s.project, time.Now().Format(dateFormat))
+`, s.Project, time.Now().Format(dateFormat))
 
 	for _, item := range named {
 		fmt.Fprintf(&buf, `
 %s
 ----------------------
-`, item.name)
+`, item.Name)
 
-		for _, epic := range item.epics {
+		for _, epic := range item.Epics {
 			totalIssues := len(epic.Issues)
 			doneCnt, inProgrCnt, outstdCnt := epicStatusCount(epic)
 

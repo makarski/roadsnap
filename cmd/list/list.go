@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"sort"
 	"time"
 
 	"github.com/makarski/roadsnap/calculator"
@@ -19,7 +18,7 @@ const (
 
 type (
 	CacheReader interface {
-		FromCache(time.Time, string) ([]*cache.EpicLink, error)
+		FromCacheOrdered(time.Time, string) ([]*cache.EpicLink, error)
 	}
 
 	SummaryGenerator interface {
@@ -37,19 +36,13 @@ func NewLister(cr CacheReader, sg SummaryGenerator, targetDir string) *Lister {
 	return &Lister{cr, sg, targetDir}
 }
 
-func (l *Lister) List(date time.Time, project string) error {
-	epics, err := l.cr.FromCache(date, project)
+func (l *Lister) WriteReport(date time.Time, project string) error {
+	summary, err := l.GenerateSummary(date, project)
 	if err != nil {
 		return err
 	}
 
-	sort.Slice(epics, func(i, j int) bool {
-		return epics[i].DueDate.Unix() < epics[j].DueDate.Unix()
-	})
-
-	summary := l.sg.GenerateSummary(epics, project)
 	reportTxt := summary.String()
-
 	fileKey := path.Join(l.targetDir, project, date.Format(cache.DateFormat), project+"_roadsnap.md")
 
 	f, err := os.Create(fileKey)
@@ -60,4 +53,13 @@ func (l *Lister) List(date time.Time, project string) error {
 
 	_, err = f.WriteString(reportTxt)
 	return err
+}
+
+func (l *Lister) GenerateSummary(date time.Time, project string) (calculator.Summary, error) {
+	epics, err := l.cr.FromCacheOrdered(date, project)
+	if err != nil {
+		return calculator.Summary{}, err
+	}
+
+	return l.sg.GenerateSummary(epics, project), nil
 }

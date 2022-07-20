@@ -9,6 +9,7 @@ import (
 
 	"github.com/makarski/roadsnap/calculator"
 	"github.com/makarski/roadsnap/cmd/cache"
+	"github.com/makarski/roadsnap/cmd/chart"
 	"github.com/makarski/roadsnap/cmd/list"
 	"github.com/makarski/roadsnap/config"
 	"github.com/makarski/roadsnap/roadmap"
@@ -33,6 +34,7 @@ var (
 	cmds = map[string]CmdRunner{
 		"cache": cacheCmd,
 		"list":  listCmd,
+		"chart": chartCmd,
 	}
 
 	out         = os.Stdout
@@ -40,6 +42,44 @@ var (
 	in          = os.Stdin
 )
 
+func chartCmd(cfg *config.Config) CmdFunc {
+	cacheReader := cache.NewEpicCacher(nil, InArgs.Dir)
+	summaryGenerator := calculator.NewCalculator(cfg.JiraCrd.BaseURL)
+	lister := list.NewLister(cacheReader, &summaryGenerator, InArgs.Dir)
+	drawer := chart.NewDrawer(lister, InArgs.Dir)
+
+	return func() error {
+		projects, err := cache.ListProjects(InArgs.Dir)
+		if err != nil {
+			return err
+		}
+
+		for _, project := range projects {
+			if len(project.Dates) == 0 {
+				fmt.Fprintf(out, "> Skipping project '%s' - no cached raw data\n", project.Project)
+				continue
+			}
+
+			sort.Sort(sort.Reverse(sort.StringSlice(project.Dates)))
+
+			dates := make([]time.Time, 0, len(project.Dates))
+			for _, date := range project.Dates {
+				t, err := time.Parse(dateFormat, date)
+				if err != nil {
+					return fmt.Errorf("failed to parse time for project: %s:%s. %s", project.Project, date, err)
+				}
+
+				dates = append(dates, t)
+			}
+
+			if err := drawer.Draw(dates, project.Project); err != nil {
+				return fmt.Errorf("failed to plot for project: %s. %s", project, err)
+			}
+		}
+
+		return nil
+	}
+}
 func cacheCmd(cfg *config.Config) CmdFunc {
 	snapshotDate := time.Now()
 
@@ -78,8 +118,6 @@ func cacheCmd(cfg *config.Config) CmdFunc {
 }
 
 func listCmd(cfg *config.Config) CmdFunc {
-	cache.CustomFieldStartDate = cfg.Epic.CustomFieldStartDate
-
 	cacheReader := cache.NewEpicCacher(nil, InArgs.Dir)
 	summaryGenerator := calculator.NewCalculator(cfg.JiraCrd.BaseURL)
 	lister := list.NewLister(cacheReader, &summaryGenerator, InArgs.Dir)
@@ -108,7 +146,7 @@ func listCmd(cfg *config.Config) CmdFunc {
 				return fmt.Errorf("failed to parse time for project: %s. %s", project.Project, err)
 			}
 
-			if err := lister.List(t, project.Project); err != nil {
+			if err := lister.WriteReport(t, project.Project); err != nil {
 				return fmt.Errorf("failed to list project: %s. %s", project.Project, err)
 			}
 		}
@@ -141,7 +179,7 @@ func interactListCmdHandler(lister *list.Lister, projects []*cache.CachedEntry) 
 		return err
 	}
 
-	return lister.List(t, project.Project)
+	return lister.WriteReport(t, project.Project)
 }
 
 func Run(cmdName string) error {
@@ -149,6 +187,9 @@ func Run(cmdName string) error {
 	if err != nil {
 		return err
 	}
+
+	// Update global unmarshal config for StartDate parsing
+	cache.CustomFieldStartDate = cfg.Epic.CustomFieldStartDate
 
 	cmdRun, ok := cmds[cmdName]
 	if !ok {

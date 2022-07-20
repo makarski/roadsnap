@@ -36,6 +36,7 @@ USAGE:
 SUBCOMMANDS:
   cache - Cache JIRA epics
   list  - Generate report
+  chart - Generate stacked bar chart for with stats
 
 OPTIONS:
 `

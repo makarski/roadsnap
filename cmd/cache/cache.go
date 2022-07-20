@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path"
+	"sort"
 	"strings"
 	"time"
 
@@ -137,7 +138,8 @@ func (el *EpicLink) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func (ec *EpicCacher) FromCache(date time.Time, projectName string) ([]*EpicLink, error) {
+// FromCacheOrdered returns cached epic link items order by DueDate ASC
+func (ec *EpicCacher) FromCacheOrdered(date time.Time, projectName string) ([]*EpicLink, error) {
 	f, err := os.Open(ec.cacheNameEpic(date, projectName))
 	defer f.Close()
 	if err != nil {
@@ -165,6 +167,11 @@ func (ec *EpicCacher) FromCache(date time.Time, projectName string) ([]*EpicLink
 		epic.Issues = issues
 		epic.SnapshotDate = date
 	}
+
+	// order by due date
+	sort.Slice(epicLinks, func(i, j int) bool {
+		return epicLinks[i].DueDate.Unix() < epicLinks[j].DueDate.Unix()
+	})
 
 	return epicLinks, nil
 }
