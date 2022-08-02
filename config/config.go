@@ -11,9 +11,10 @@ const DefaultFileName = "rsnap-config.toml"
 
 type (
 	Config struct {
-		JiraCrd  *JiraCrd  `toml:"jira"`
-		Projects *Projects `toml:"projects"`
-		Epic     *Epic     `toml:"epic"`
+		JiraCrd     *JiraCrd     `toml:"jira"`
+		Projects    *Projects    `toml:"projects"`
+		Epic        *Epic        `toml:"epic"`
+		StatusNames *StatusNames `toml:"status_names"`
 	}
 
 	Projects struct {
@@ -29,6 +30,12 @@ type (
 
 	Epic struct {
 		CustomFieldStartDate string `toml:"start_date_field"`
+	}
+
+	StatusNames struct {
+		Done       []string `toml:"done"`
+		InProgress []string `toml:"progress"`
+		ToDo       []string `toml:"todo"`
 	}
 )
 

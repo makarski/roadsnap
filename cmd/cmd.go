@@ -44,7 +44,7 @@ var (
 
 func chartCmd(cfg *config.Config) CmdFunc {
 	cacheReader := cache.NewEpicCacher(nil, InArgs.Dir)
-	summaryGenerator := calculator.NewCalculator(cfg.JiraCrd.BaseURL)
+	summaryGenerator := calculator.NewCalculator(cfg.JiraCrd.BaseURL, cfg.StatusNames)
 	lister := list.NewLister(cacheReader, &summaryGenerator, InArgs.Dir)
 	drawer := chart.NewDrawer(lister, InArgs.Dir)
 
@@ -119,7 +119,7 @@ func cacheCmd(cfg *config.Config) CmdFunc {
 
 func listCmd(cfg *config.Config) CmdFunc {
 	cacheReader := cache.NewEpicCacher(nil, InArgs.Dir)
-	summaryGenerator := calculator.NewCalculator(cfg.JiraCrd.BaseURL)
+	summaryGenerator := calculator.NewCalculator(cfg.JiraCrd.BaseURL, cfg.StatusNames)
 	lister := list.NewLister(cacheReader, &summaryGenerator, InArgs.Dir)
 
 	return func() error {
@@ -140,14 +140,15 @@ func listCmd(cfg *config.Config) CmdFunc {
 
 			sort.Sort(sort.Reverse(sort.StringSlice(project.Dates)))
 
-			// only process the last one
-			t, err := time.Parse(dateFormat, project.Dates[0])
-			if err != nil {
-				return fmt.Errorf("failed to parse time for project: %s. %s", project.Project, err)
-			}
+			for _, date := range project.Dates {
+				t, err := time.Parse(dateFormat, date)
+				if err != nil {
+					return fmt.Errorf("failed to parse time for project: %s. %s", project.Project, err)
+				}
 
-			if err := lister.WriteReport(t, project.Project); err != nil {
-				return fmt.Errorf("failed to list project: %s. %s", project.Project, err)
+				if err := lister.WriteReport(t, project.Project); err != nil {
+					return fmt.Errorf("failed to list project: %s. %s", project.Project, err)
+				}
 			}
 		}
 

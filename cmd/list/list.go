@@ -10,19 +10,13 @@ import (
 	"github.com/makarski/roadsnap/cmd/cache"
 )
 
-const (
-	StatusDone       = "Done"
-	StatusTodo       = "To Do"
-	StatusInProgress = "In Progress"
-)
-
 type (
 	CacheReader interface {
 		FromCacheOrdered(time.Time, string) ([]*cache.EpicLink, error)
 	}
 
 	SummaryGenerator interface {
-		GenerateSummary([]*cache.EpicLink, string) calculator.Summary
+		GenerateSummary([]*cache.EpicLink, string, time.Time) calculator.Summary
 	}
 )
 
@@ -61,5 +55,5 @@ func (l *Lister) GenerateSummary(date time.Time, project string) (calculator.Sum
 		return calculator.Summary{}, err
 	}
 
-	return l.sg.GenerateSummary(epics, project), nil
+	return l.sg.GenerateSummary(epics, project, date), nil
 }

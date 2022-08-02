@@ -14,3 +14,28 @@ token = "your_token"
 [epic]
 # todo: change to a more generic use case
 start_date_field = "customfield_11501"
+
+[status_names]
+done = [
+  "Done",
+  "Not doing",
+]
+
+progress = [
+  "QA",
+  "Review",
+  "In Review",
+  "In QA (Production)",
+  "In Progress",
+  "In Review/QA",
+  "In QA",
+  "External QA",
+]
+
+todo = [
+  "Postponed",
+  "Backlog",
+  "Blocked",
+  "To Do",
+  "Blocked / Waiting",
+]

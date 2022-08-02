@@ -7,86 +7,134 @@ import (
 	"time"
 
 	"github.com/andygrunwald/go-jira"
-
 	"github.com/makarski/roadsnap/cmd/cache"
+	"github.com/makarski/roadsnap/config"
 )
 
 const (
-	StatusDone       = "Done"
-	StatusTodo       = "To Do"
-	StatusInProgress = "In Progress"
-
 	dateFormat = "January 2, 2006"
 )
 
 type Calculator struct {
 	jiraBaseURL string
+	statusNames *config.StatusNames
 }
 
-func NewCalculator(jiraBaseURL string) Calculator {
-	return Calculator{jiraBaseURL}
+func NewCalculator(jiraBaseURL string, statusNames *config.StatusNames) Calculator {
+	return Calculator{jiraBaseURL, statusNames}
 }
 
-func (c *Calculator) GenerateSummary(epics []*cache.EpicLink, project string) Summary {
+func (c *Calculator) GenerateSummary(epics []*cache.EpicLink, project string, date time.Time) Summary {
 	sum := Summary{
+		Date:           date,
 		Project:        project,
 		epicLinkPrefix: c.jiraBaseURL + "/browse",
 		Done:           make([]cache.EpicLink, 0),
 		Overdue:        make([]cache.EpicLink, 0),
 		Ongoing:        make([]cache.EpicLink, 0),
 		Outstanding:    make([]cache.EpicLink, 0),
+
+		statusConfigs: c.statusNames,
 	}
 
 	for _, epic := range epics {
 		epic := *epic
-		doneCnt, _, _ := epicStatusCount(epic)
+		doneCnt, _, _ := statusCount(epic, c.statusNames)
 		allDone := doneCnt == uint8(len(epic.Issues))
 		dueDatePassed := epic.PastDueDate()
 
-		if allDone && dueDatePassed {
+		epicStatusDone := isIssueDone(epic.Epic, c.statusNames)
+		epicStatusToDo := isIssueToDo(epic.Epic, c.statusNames)
+
+		if epicStatusDone && allDone {
 			sum.Done = append(sum.Done, epic)
+			continue
 		}
 
-		if !allDone && dueDatePassed {
+		if dueDatePassed && (!epicStatusDone || !allDone) && !epicStatusToDo {
 			sum.Overdue = append(sum.Overdue, epic)
+			continue
 		}
 
-		if epic.PreStartDate() {
+		if epicStatusToDo {
 			sum.Outstanding = append(sum.Outstanding, epic)
+			continue
 		}
 
-		if epic.InProgress() {
+		if isIssueInProgress(epic.Epic, c.statusNames) {
 			sum.Ongoing = append(sum.Ongoing, epic)
+			continue
 		}
 	}
 
 	return sum
 }
 
-func epicStatusCount(epic cache.EpicLink) (uint8, uint8, uint8) {
-	var doneCount, inProgrCount, outstdCount uint8
+func statusCount(epic cache.EpicLink, statusNames *config.StatusNames) (uint8, uint8, uint8) {
+	counters := []*struct {
+		statusConfigs []string
+		counter       uint8
+	}{
+		{
+			statusNames.Done,
+			0,
+		},
+		{
+			statusNames.InProgress,
+			0,
+		},
+		{
+			statusNames.ToDo,
+			0,
+		},
+	}
 
 	for _, issue := range epic.Issues {
-		if isIssueDone(issue) {
-			doneCount += 1
-		} else if isIssueInProgress(issue) {
-			inProgrCount += 1
-		} else if isIssueToDo(issue) {
-			outstdCount += 1
+		statusName := issue.Fields.Status.Name
+
+		for _, counter := range counters {
+			if sliceContains(counter.statusConfigs, statusName) {
+				counter.counter += 1
+			}
 		}
 	}
 
-	return doneCount, inProgrCount, outstdCount
+	return counters[0].counter, counters[1].counter, counters[2].counter
+}
+
+func isIssueDone(issue jira.Issue, statusConfig *config.StatusNames) bool {
+	return sliceContains(statusConfig.Done, issue.Fields.Status.Name)
+}
+
+func isIssueToDo(issue jira.Issue, statusConfig *config.StatusNames) bool {
+	return sliceContains(statusConfig.ToDo, issue.Fields.Status.Name)
+}
+
+func isIssueInProgress(issue jira.Issue, statusConfig *config.StatusNames) bool {
+	return sliceContains(statusConfig.InProgress, issue.Fields.Status.Name)
+}
+
+func sliceContains(s []string, v string) bool {
+	for _, item := range s {
+		if item == v {
+			return true
+		}
+	}
+
+	return false
 }
 
 type (
 	Summary struct {
+		Date           time.Time
 		Project        string
 		epicLinkPrefix string
 		Done           []cache.EpicLink
 		Overdue        []cache.EpicLink
 		Ongoing        []cache.EpicLink
 		Outstanding    []cache.EpicLink
+
+		statusConfigs *config.StatusNames
 	}
 
 	NamedItems struct {
@@ -94,6 +142,10 @@ type (
 		Epics []cache.EpicLink
 	}
 )
+
+func (s *Summary) AllCount() int {
+	return len(s.Done) + len(s.Overdue) + len(s.Outstanding) + len(s.Ongoing)
+}
 
 func (s *Summary) NamedStats() []NamedItems {
 	return []NamedItems{
@@ -110,7 +162,7 @@ func (s *Summary) NamedStats() []NamedItems {
 			Epics: s.Overdue,
 		},
 		{
-			Name:  "Outstanding",
+			Name:  "To Do",
 			Epics: s.Outstanding,
 		},
 	}
@@ -123,39 +175,54 @@ func (s *Summary) String() string {
 	fmt.Fprintf(&buf, `
 %s: %s
 ======================
-`, s.Project, time.Now().Format(dateFormat))
+`, s.Project, s.Date.Format(dateFormat))
 
 	for _, item := range named {
 		fmt.Fprintf(&buf, `
-%s
+%s (%d/%d)
 ----------------------
-`, item.Name)
+`, item.Name, len(item.Epics), s.AllCount())
 
 		for _, epic := range item.Epics {
 			totalIssues := len(epic.Issues)
-			doneCnt, inProgrCnt, outstdCnt := epicStatusCount(epic)
+			doneCnt, inProgrCnt, outstdCnt := statusCount(epic, s.statusConfigs)
+			completeRatio := float64(doneCnt) / float64(totalIssues)
 
 			labels := ""
 			if len(epic.Epic.Fields.Labels) > 0 {
 				labels = "`" + strings.Join(epic.Epic.Fields.Labels, "`, `") + "`"
 			}
 
+			statusAlert := ""
+			if msg := epicStatusNotInSyncMessage(epic, s.statusConfigs); msg != "" {
+				statusAlert = fmt.Sprintf(`
+> %s
+`, msg)
+			}
+
 			fmt.Fprintf(&buf, `
-#### %s [%s](%s/%s): %s
+#### %s %d [%s](%s/%s): %s
+%s
 %s  
+Status: %s  
 Start: %s  
 Due: %s  
-Total: %d, Done: %d, InProgress: %d, Outstanding: %d
+Total: %d, Done: %d, InProgress: %d, Outstanding: %d  
+Progress: %.2f
 `,
 				quarterByDate(epic.DueDate),
+				epic.DueDate.Year(),
 				epic.Epic.Key,
 				s.epicLinkPrefix,
 				epic.Epic.Key,
 				epic.Epic.Fields.Summary,
+				statusAlert,
 				labels,
+				epic.Epic.Fields.Status.Name,
 				epic.StartDate.Format(dateFormat),
 				epic.DueDate.Format(dateFormat),
 				totalIssues, doneCnt, inProgrCnt, outstdCnt,
+				completeRatio,
 			)
 		}
 	}
@@ -163,16 +230,12 @@ Total: %d, Done: %d, InProgress: %d, Outstanding: %d
 	return buf.String()
 }
 
-func isIssueDone(issue jira.Issue) bool {
-	return issue.Fields.Status.StatusCategory.Name == StatusDone
-}
+func epicStatusNotInSyncMessage(epic cache.EpicLink, statusConfig *config.StatusNames) string {
+	if (epic.PastDueDate() || epic.InActivePhase()) && isIssueToDo(epic.Epic, statusConfig) {
+		return "Epic Status Does not correspond Planning Dates"
+	}
 
-func isIssueToDo(issue jira.Issue) bool {
-	return issue.Fields.Status.StatusCategory.Name == StatusTodo
-}
-
-func isIssueInProgress(issue jira.Issue) bool {
-	return issue.Fields.Status.StatusCategory.Name == StatusInProgress
+	return ""
 }
 
 type Quarter int

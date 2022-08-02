@@ -93,8 +93,8 @@ func (el *EpicLink) PreStartDate() bool {
 	return el.SnapshotDate.Before(el.StartDate)
 }
 
-func (el *EpicLink) InProgress() bool {
-	return el.SnapshotDate.After(el.StartDate) && el.SnapshotDate.Before(el.DueDate)
+func (el *EpicLink) InActivePhase() bool {
+	return el.SnapshotDate.Equal(el.StartDate) || el.SnapshotDate.After(el.StartDate) && el.SnapshotDate.Before(el.DueDate)
 }
 
 func (el *EpicLink) UnmarshalJSON(b []byte) error {

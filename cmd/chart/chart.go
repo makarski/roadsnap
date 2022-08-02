@@ -23,8 +23,9 @@ type (
 	}
 
 	DataItem struct {
-		Name  string
-		Value int
+		Name     string
+		Value    int
+		MaxValue int
 	}
 )
 
@@ -57,14 +58,14 @@ func (d *Drawer) Draw(dates []time.Time, project string) error {
 				byDate = append(byDate, byDateItem)
 			}
 
-			byDateItem.Stats = append(byDateItem.Stats, DataItem{Name: stat.Name, Value: len(stat.Epics)})
+			byDateItem.Stats = append(byDateItem.Stats, DataItem{Name: stat.Name, Value: len(stat.Epics), MaxValue: summary.AllCount()})
 		}
 	}
 
 	chart.DefaultBackgroundColor = chart.ColorTransparent
 	chart.DefaultCanvasColor = chart.ColorTransparent
 
-	barWidth := 120
+	barWidth := 150
 
 	stackedBarChart := chart.StackedBarChart{
 		Title:      project,
@@ -93,7 +94,7 @@ func (d *Drawer) Draw(dates []time.Time, project string) error {
 		for _, stat := range bd.Stats {
 			color := colorByName(stat.Name)
 			barVal := chart.Value{
-				Label: fmt.Sprintf("%s: %d", stat.Name, stat.Value),
+				Label: fmt.Sprintf("%s (%d/%d)", stat.Name, stat.Value, stat.MaxValue),
 				Value: float64(stat.Value),
 				Style: chart.Style{
 					StrokeWidth: .01,
@@ -126,7 +127,7 @@ func colorByName(name string) drawing.Color {
 	switch name {
 	case "Done":
 		return drawing.ColorGreen
-	case "Outstanding":
+	case "To Do":
 		return drawing.Color{R: 100, G: 80, B: 90, A: 255}
 	case "Overdue":
 		return drawing.ColorRed
