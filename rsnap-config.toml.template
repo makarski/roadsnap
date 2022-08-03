@@ -1,0 +1,39 @@
+[projects]
+names = [
+${RS_PROJECT_NAMES}
+]
+
+[jira]
+user = ${RS_JIRA_EMAIL}
+account_id = ${RS_JIRA_ACCOUNT_ID}
+base_url = ${RS_JIRA_BASE_URL}
+token = ${RS_JIRA_TOKEN}
+
+[epic]
+# todo: change to a more generic use case
+start_date_field = "customfield_11501"
+
+[status_names]
+done = [
+  "Done",
+  "Not doing",
+]
+
+progress = [
+  "QA",
+  "Review",
+  "In Review",
+  "In QA (Production)",
+  "In Progress",
+  "In Review/QA",
+  "In QA",
+  "External QA",
+]
+
+todo = [
+  "Postponed",
+  "Backlog",
+  "Blocked",
+  "To Do",
+  "Blocked / Waiting",
+]

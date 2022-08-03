@@ -10,28 +10,17 @@ This simple CLI tool allows to cache **JIRA epics** by a project name and then g
 
 ### Usage
 
-Prerequisite: [Golang](https://go.dev/dl/)
+Prerequisites
+* [Docker](https://docker.com)
+* Make
 
 ```sh
-$ cp rsnap-config.toml.dist rsnap-config.toml
+# Build your application
+$ make build
 
-$ go build
+# Configure your application
+$ make config
 
-# Help
-$ roadsnap --help
-
-# Generate column stacked chart
-$ roadsnap -dir=path/to/your/snapshots/dir chart
-
-# Cache
-$ roadsnap -dir=path/to/your/snapshots/dir cache
-
-# Cache in interactive mode
-$ roadsnap -dir=path/to/your/snapshots/dir -i cache
-
-# Generate markdown
-$ roadsnap -dir=path/to/your/snapshots/dir list
-
-# Generate in interactive mode
-$ roadsnap -dir=path/to/your/snapshots/dir -i list
+# Check the reference
+$ make help
 ```

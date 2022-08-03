@@ -1,2 +1,4 @@
 rsnap-config.toml
 roadsnap
+user_configs
+.env
