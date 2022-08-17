@@ -20,11 +20,8 @@ cache-all: config env
 cache-one: config env
 	$(call run_app, "-i", "cache")
 
-report-all: config env
-	$(call run_app, "list")
-
-report-one: config env
-	$(call run_app, "-i", "list")
+report: config env
+	$(call run_app, "report")
 
 chart-all: config env
 	$(call run_app, "chart")
@@ -54,8 +51,7 @@ define USAGE
 * '${YELLOW}'config'${NOCOLOR}'     : configure your application\n\
 * '${YELLOW}'cache-all'${NOCOLOR}'  : caches JIRA epics for all configured projects\n\
 * '${YELLOW}'cache-one'${NOCOLOR}'  : interactive mode - user is asked what project to cache\n\
-* '${YELLOW}'report-all'${NOCOLOR}' : (re)generates markdown snapshot report for all available cached projects, all dates\n\
-* '${YELLOW}'report-one'${NOCOLOR}' : interactive mode - user can choose project and date they want to have a report for\n\
+* '${YELLOW}'report'${NOCOLOR}'     : (re)generates markdown snapshot report for all available cached projects (by month)\n\
 * '${YELLOW}'chart-all'${NOCOLOR}'  : generates stacked column charts for all projects, all dates - allows to analyze trends\n\
 
 endef

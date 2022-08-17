@@ -32,9 +32,10 @@ var (
 	InArgs = Flags{}
 
 	cmds = map[string]CmdRunner{
-		"cache": cacheCmd,
-		"list":  listCmd,
-		"chart": chartCmd,
+		"cache":  cacheCmd,
+		"list":   listCmd,
+		"chart":  chartCmd,
+		"report": TimeWindowReport,
 	}
 
 	out         = os.Stdout
@@ -49,7 +50,7 @@ func chartCmd(cfg *config.Config) CmdFunc {
 	drawer := chart.NewDrawer(lister, InArgs.Dir)
 
 	return func() error {
-		projects, err := cache.ListProjects(InArgs.Dir)
+		projects, err := cache.ListSnapshotDates(InArgs.Dir, "")
 		if err != nil {
 			return err
 		}
@@ -80,6 +81,7 @@ func chartCmd(cfg *config.Config) CmdFunc {
 		return nil
 	}
 }
+
 func cacheCmd(cfg *config.Config) CmdFunc {
 	snapshotDate := time.Now()
 
@@ -123,7 +125,7 @@ func listCmd(cfg *config.Config) CmdFunc {
 	lister := list.NewLister(cacheReader, &summaryGenerator, InArgs.Dir)
 
 	return func() error {
-		projects, err := cache.ListProjects(InArgs.Dir)
+		projects, err := cache.ListSnapshotDates(InArgs.Dir, "")
 		if err != nil {
 			return err
 		}

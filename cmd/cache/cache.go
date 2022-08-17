@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/makarski/roadsnap/roadmap"
+	"github.com/makarski/roadsnap/util"
 
 	"github.com/andygrunwald/go-jira"
 )
@@ -30,31 +31,24 @@ func NewEpicCacher(rv *roadmap.RoadmapViewer, dir string) *EpicCacher {
 		rv,
 		dir,
 		func(project string, snapshotDate time.Time) string {
-			return path.Join(dir, removeSpace(project), snapshotDate.Format(DateFormat), "raw_data")
+			return path.Join(dir, util.RemoveSpaces(project), snapshotDate.Format(DateFormat), "raw_data")
 		},
 	}
 }
 
 func (ec *EpicCacher) cacheNameEpic(date time.Time, project string) string {
-	projectKey := removeSpace(project)
+	projectKey := util.RemoveSpaces(project)
 
 	epicFileKey := fmt.Sprintf("epics_%s.json", projectKey)
+	//todo: remove projectKey
+
 	return path.Join(ec.projCacheDir(project, date), projectKey, epicFileKey)
 }
 
 func (ec *EpicCacher) cacheNameIssues(date time.Time, project, epicKey string) string {
-	return path.Join(ec.projCacheDir(project, date), removeSpace(project), fmt.Sprintf("issues_%s.json", epicKey))
-}
+	//todo: remove projectKey
 
-func removeSpace(s string) string {
-	return strings.ReplaceAll(s, " ", "")
-}
-
-func createDir(key string) error {
-	if err := os.MkdirAll(path.Dir(key), os.FileMode(0744)); err != nil {
-		return fmt.Errorf("failed to create dir for key: %s. %s", key, err)
-	}
-	return nil
+	return path.Join(ec.projCacheDir(project, date), util.RemoveSpaces(project), fmt.Sprintf("issues_%s.json", epicKey))
 }
 
 func (ec *EpicCacher) Cache(date time.Time, projects []string) error {
@@ -168,7 +162,7 @@ func (ec *EpicCacher) FromCacheOrdered(date time.Time, projectName string) ([]*E
 		epic.SnapshotDate = date
 	}
 
-	// order by due date
+	// order by due date ASC
 	sort.Slice(epicLinks, func(i, j int) bool {
 		return epicLinks[i].DueDate.Unix() < epicLinks[j].DueDate.Unix()
 	})
@@ -183,7 +177,7 @@ func (ec *EpicCacher) cacheEpics(date time.Time, projectName string) ([]jira.Iss
 	}
 
 	fileKey := ec.cacheNameEpic(date, projectName)
-	f, err := createFile(fileKey)
+	f, err := util.CreateFile(fileKey)
 	if err != nil {
 		return nil, err
 	}
@@ -199,7 +193,7 @@ func (ec *EpicCacher) cacheEpicIssues(date time.Time, project, key string) ([]ji
 	}
 
 	fileKey := ec.cacheNameIssues(date, project, key)
-	f, err := createFile(fileKey)
+	f, err := util.CreateFile(fileKey)
 	if err != nil {
 		return nil, err
 	}
@@ -208,27 +202,19 @@ func (ec *EpicCacher) cacheEpicIssues(date time.Time, project, key string) ([]ji
 	return issues, err
 }
 
-func createFile(fileKey string) (*os.File, error) {
-	if err := createDir(fileKey); err != nil {
-		return nil, err
-	}
-
-	f, err := os.Create(fileKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create a file for key: %s. %s", fileKey, err)
-	}
-
-	return f, nil
-}
-
 type CachedEntry struct {
 	Project string
 	Dates   []string
 }
 
-func ListProjects(baseDir string) ([]*CachedEntry, error) {
+func ListSnapshotDates(baseDir string, project string) ([]*CachedEntry, error) {
 	records := make([]*CachedEntry, 0)
 	byProject := make(map[string]*CachedEntry)
+
+	pattern := "*/*/raw_data"
+	if project != "" {
+		pattern = fmt.Sprintf("%s/*/raw_data", util.RemoveSpaces(project))
+	}
 
 	fs.WalkDir(os.DirFS(baseDir), ".", func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -239,7 +225,7 @@ func ListProjects(baseDir string) ([]*CachedEntry, error) {
 			return nil
 		}
 
-		match, err := path.Match("*/*/raw_data", p)
+		match, err := path.Match(pattern, p)
 		if err != nil {
 			return err
 		}

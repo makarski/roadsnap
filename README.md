@@ -1,12 +1,9 @@
 Roadsnap
 ========
 
-This simple CLI tool allows to cache **JIRA epics** by a project name and then generate an **overview markdown** file that will contain the epic links split by the categories:
+This simple CLI tool allows to cache **JIRA epics** by a project name and then generate a monthly progress report based on historic data.
 
-- **Done** *(complete by status & all tasks done)*
-- **Ongoing** *(status in progress)*
-- **Overdue** *(due date in the past & status not done or not all stories done)*
-- **Outstanding** *(status todo)*
+![Sample Preview](./sample-preview.png)
 
 ### Usage
 

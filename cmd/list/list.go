@@ -20,6 +20,7 @@ type (
 	}
 )
 
+// todo: deprecate this
 type Lister struct {
 	cr        CacheReader
 	sg        SummaryGenerator
